@@ -1,2 +1,3 @@
 connectpro-backend/.env
 connectpro-backend/venv/
+connectpro-frontend/lib/supabase.ts

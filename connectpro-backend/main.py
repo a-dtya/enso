@@ -1,6 +1,9 @@
 from fastapi import FastAPI, HTTPException, Depends, status #type: ignore
 from fastapi.middleware.cors import CORSMiddleware #type: ignore
 from pydantic import BaseModel, EmailStr #type: ignore
+import jwt
+from jwt import PyJWTError
+from starlette.requests import Request #type: ignore
 from typing import List, Optional
 import os
 from dotenv import load_dotenv #type: ignore
@@ -58,23 +61,27 @@ def extract_domain_from_email(email: str) -> str:
     """Extract domain from email address"""
     return email.split('@')[1].lower()
 
-def get_current_user(authorization: str = None):
-    """Get current user from authorization header"""
-    if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authorization header required"
-        )
-    
+def get_current_user(request: Request):
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        print("Missing or invalid Authorization header")
+        raise HTTPException(status_code=401, detail="Missing token")
+
+    token = auth_header.split(" ")[1]
+
     try:
-        token = authorization.replace("Bearer ", "")
-        user = supabase.auth.get_user(token)
-        return user.user
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
-        )
+        payload = jwt.decode(token, os.getenv("SUPABASE_JWT_SECRET"), algorithms=["HS256"], options={"verify_aud": False})  # skip audience check
+        print("Decoded JWT payload:", payload)
+        # Wrap in a simple object so you can use `.id` in endpoints
+        class User:
+            def __init__(self, sub, email):
+                self.id = sub
+                self.email = email
+
+        return User(sub=payload["sub"], email=payload.get("email"))
+    except PyJWTError as e:
+        print("JWT decode error:", e)
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 @app.get("/")
 async def root():
@@ -82,26 +89,24 @@ async def root():
 
 @app.post("/companies")
 async def create_company(company: CompanyCreate):
-    """Create a new company"""
-    try:
-        # Check if company domain already exists
-        existing = supabase.table("companies").select("*").eq("domain", company.domain.lower()).execute()
-        
-        if existing.data:
-            raise HTTPException(
-                status_code=400,
-                detail="Company with this domain already exists"
-            )
-        
-        result = supabase.table("companies").insert({
-            "name": company.name,
-            "domain": company.domain.lower()
-        }).execute()
-        
-        return {"message": "Company created successfully", "company": result.data[0]}
+    # Check if company domain already exists
+    existing = supabase.table("companies").select("*").eq("domain", company.domain.lower()).execute()
     
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    if existing.data:
+        raise HTTPException(
+            status_code=409,  # conflict
+            detail="Company with this domain already exists"
+        )
+    
+    result = supabase.table("companies").insert({
+        "name": company.name,
+        "domain": company.domain.lower()
+    }).execute()
+    
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Failed to create company")
+    
+    return {"company": result.data[0]}
 
 @app.get("/companies/by-domain/{domain}")
 async def get_company_by_domain(domain: str):
@@ -128,6 +133,7 @@ async def create_profile(profile: ProfileCreate, user = Depends(get_current_user
         company_result = supabase.table("companies").select("*").eq("domain", email_domain).execute()
         
         if not company_result.data:
+            print(f"No company found for domain {email_domain}")
             raise HTTPException(
                 status_code=400,
                 detail=f"No company found for domain {email_domain}. Please ask your admin to register your company first."
@@ -161,6 +167,7 @@ async def get_my_profile(user = Depends(get_current_user)):
         result = supabase.table("profiles").select("*, companies(name, domain)").eq("id", user.id).execute()
         
         if not result.data:
+            print(f"No profile found for user {user.id}")
             raise HTTPException(status_code=404, detail="Profile not found")
         
         return result.data[0]
@@ -268,16 +275,63 @@ async def create_connection_request(connection: ConnectionRequest, user = Depend
 async def get_my_connections(user = Depends(get_current_user)):
     """Get all connections for current user"""
     try:
-        # Get sent requests
-        sent = supabase.table("connections").select("*, profiles!connections_target_id_fkey(full_name, role, email)").eq("requester_id", user.id).execute()
         
-        # Get received requests
-        received = supabase.table("connections").select("*, profiles!connections_requester_id_fkey(full_name, role, email)").eq("target_id", user.id).execute()
+        # Fetch all sent connections
+        sent_connections = (
+            supabase.table("connections")
+            .select("id, requester_id, target_id, status, message, created_at")
+            .eq("requester_id", user.id)
+            .execute()
+        )
+
+        # Fetch profiles for sent connections
+        sent_profiles = (
+            supabase.table("profiles")
+            .select("id, full_name, role, email")
+            .in_("id", [conn["target_id"] for conn in sent_connections.data])
+            .execute()
+        )
+
+        # Combine connections with profile info
+        sent = [
+            {**conn, "profile": next((p for p in sent_profiles.data if p["id"] == conn["target_id"]), None)}
+            for conn in sent_connections.data
+        ]
+
+        # Fetch all received connections
+        received_connections = (
+            supabase.table("connections")
+            .select("id, requester_id, target_id, status, message, created_at")
+            .eq("target_id", user.id)
+            .execute()
+        )
+
+        # Fetch profiles for received connections
+        received_profiles = (
+            supabase.table("profiles")
+            .select("id, full_name, role, email")
+            .in_("id", [conn["requester_id"] for conn in received_connections.data])
+            .execute()
+        )
+
+        # Combine connections with profile info
+        received = [
+            {**conn, "profile": next((p for p in received_profiles.data if p["id"] == conn["requester_id"]), None)}
+            for conn in received_connections.data
+        ]
+
         
+
+
+        print(f"Sent connections: {sent}")
+        print(f"Received connections: {received}")
+
+        # Return final result
         return {
-            "sent": sent.data,
-            "received": received.data
+            "sent": sent,
+            "received": received
         }
+
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
