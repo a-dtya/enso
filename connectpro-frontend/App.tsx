@@ -15,6 +15,10 @@ import ProfileScreen from './screens/ProfileScreen';
 import SearchScreen from './screens/SearchScreen';
 import ConnectionsScreen from './screens/ConnectionsScreen';
 import UserProfileScreen from './screens/UserProfileScreen';
+import ProjectDetailsScreen from './screens/ProjectDetailsScreen';
+import ProjectsListScreen from './screens/ProjectsListScreen';
+import ProjectSuggestionsScreen from './screens/ProjectSuggestionsScreen';
+import CreateProjectScreen from './screens/CreateProjectScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -80,6 +84,10 @@ export default function App() {
         <Stack.Screen name="Search" component={SearchScreen} options={{ title: 'Find People' }} />
         <Stack.Screen name="Connections" component={ConnectionsScreen} options={{ title: 'Connections' }} />
         <Stack.Screen name="UserProfile" component={UserProfileScreen} options={{ title: 'Profile' }} />
+        <Stack.Screen name="CreateProject" component={CreateProjectScreen} options={{ title: 'Create Project' }} />
+        <Stack.Screen name="ProjectSuggestions" component={ProjectSuggestionsScreen} options={{ title: 'Project Suggestions' }} />
+        <Stack.Screen name="ProjectsList" component={ProjectsListScreen} options={{ title: 'Projects' }} />
+        <Stack.Screen name="ProjectDetails" component={ProjectDetailsScreen} options={{ title: 'Project Details' }} />  
       </Stack.Navigator>
     </NavigationContainer>
   );

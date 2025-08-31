@@ -108,16 +108,17 @@ export default function ProjectsListScreen({ navigation }: Props) {
         <View style={styles.skillsContainer}>
           <Text style={styles.skillsLabel}>Required Skills:</Text>
           <View style={styles.skillsWrapper}>
-            {project.required_skills.slice(0, 3).map((skill, index) => (
-              <View key={index} style={styles.skillTag}>
+            {(project.required_skills ?? []).slice(0, 3).map((skill, index) => (
+            <View key={index} style={styles.skillTag}>
                 <Text style={styles.skillText}>{skill}</Text>
-              </View>
+            </View>
             ))}
-            {project.required_skills.length > 3 && (
-              <Text style={styles.moreSkills}>
+            {project.required_skills && project.required_skills.length > 3 && (
+            <Text style={styles.moreSkills}>
                 +{project.required_skills.length - 3} more
-              </Text>
+            </Text>
             )}
+
           </View>
         </View>
 

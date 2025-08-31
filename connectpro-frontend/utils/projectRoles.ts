@@ -9,9 +9,10 @@ export const PROJECT_MANAGER_ROLES = [
   'CEO',
   'CTO',
   'Head of Engineering',
-  'Engineering Manager'
+  'Engineering Manager',
+  'SWE'
 ];
 
 export const canCreateProjects = (userRole: string): boolean => {
-  return PROJECT_MANAGER_ROLES.includes(userRole);
+  return PROJECT_MANAGER_ROLES.map(role => role.toLowerCase()).includes(userRole.toLowerCase());
 };

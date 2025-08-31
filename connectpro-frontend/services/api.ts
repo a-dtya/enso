@@ -197,6 +197,7 @@ class ApiService {
       name: string;
       description?: string;
       required_skills: string[];
+      company_id: string;
     },
     token: string
   ): Promise<{ project: Project }> {
@@ -204,6 +205,16 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(projectData),
     }, token);
+  }
+
+  async getUserCompanyId(token: string): Promise<string | null> {
+    try {
+      const profile = await this.getMyProfile(token);
+      return profile.company_id;
+    } catch (error) {
+      console.error('Error getting user company ID:', error);
+      throw new Error('Failed to get user company ID');
+    }
   }
 
   async getProjectSuggestions(

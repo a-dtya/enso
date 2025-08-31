@@ -5,7 +5,7 @@ import { RootStackParamList } from '../App';
 import { supabase } from '../lib/supabase';
 import { apiService } from '../services/api';
 
-const CreateProjectScreen = ({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'CreateProject'>) => {
+export default function CreateProjectScreen({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'CreateProject'>) {
   const [projectName, setProjectName] = useState('');
   const [description, setDescription] = useState('');
   const [requiredSkills, setRequiredSkills] = useState('');
@@ -37,17 +37,24 @@ const CreateProjectScreen = ({ navigation, route }: NativeStackScreenProps<RootS
         .map(s => s.trim())
         .filter(s => s.length > 0);
 
+      const companyId = await apiService.getUserCompanyId(session.access_token);
+      if (!companyId) {
+        Alert.alert('Error', 'The user is not part of any company');
+        return;
+      }
+
       const response = await apiService.createProject(
         {
           name: projectName,
           description: description.trim() || undefined,
           required_skills: skillsArray,
+          company_id: companyId
         },
         session.access_token
       );
 
       // Navigate to suggestions screen with the created project
-      navigation.navigate('ProjectSuggestions', { 
+      navigation.replace('ProjectSuggestions', { 
         projectId: response.project.id 
       });
 
