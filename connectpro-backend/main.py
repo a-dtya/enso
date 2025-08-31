@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException, Depends, status #type: ignore
 from fastapi.middleware.cors import CORSMiddleware #type: ignore
 from pydantic import BaseModel, EmailStr #type: ignore
-import jwt
-from jwt import PyJWTError
+import jwt #type: ignore
+from jwt import PyJWTError #type: ignore
 from starlette.requests import Request #type: ignore
 from typing import List, Optional
 import os
@@ -56,6 +56,19 @@ class ConnectionRequest(BaseModel):
 
 class ConnectionUpdate(BaseModel):
     status: str  # accepted, declined
+
+class ProjectCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    required_skills: List[str]
+    company_id: str
+
+class SkillMatch(BaseModel):
+    profile_id: str
+    name: str
+    role: str
+    matching_skills: List[str]
+    skill_match_percentage: float
 
 def extract_domain_from_email(email: str) -> str:
     """Extract domain from email address"""
@@ -320,11 +333,8 @@ async def get_my_connections(user = Depends(get_current_user)):
             for conn in received_connections.data
         ]
 
-        
-
-
-        print(f"Sent connections: {sent}")
-        print(f"Received connections: {received}")
+        # print(f"Sent connections: {sent}")
+        # print(f"Received connections: {received}")
 
         # Return final result
         return {
@@ -352,6 +362,71 @@ async def update_connection(connection_id: str, connection_update: ConnectionUpd
     
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+app.post("/projects")
+async def create_project(project: ProjectCreate, user = Depends(get_current_user)):
+    result = supabase.table("projects").insert({
+        "name": project.name,
+        "description": project.description,
+        "required_skills": project.required_skills,
+        "company_id": project.company_id,
+        "created_by": user.id  # Get from auth
+    }).execute()
+    return result.data[0]
+
+@app.get("/projects/{project_id}/suggested-members")
+async def get_project_suggestions(project_id: str):
+    # Get project details
+    project = supabase.table("projects").select("*").eq("id", project_id).execute()
+    required_skills = project.data[0]["required_skills"]
+    company_id = project.data[0]["company_id"]
+    
+    # Get all profiles in company
+    profiles = supabase.table("profiles").select("*").eq("company_id", company_id).execute()
+    
+    suggestions = []
+    for profile in profiles.data:
+        profile_skills = profile.get("skills", [])
+        matching_skills = list(set(required_skills) & set(profile_skills))
+        
+        if matching_skills:  # Only include if they have at least 1 matching skill
+            match_percentage = (len(matching_skills) / len(required_skills)) * 100
+            suggestions.append({
+                "profile_id": profile["id"],
+                "name": profile["name"],
+                "role": profile["role"],
+                "matching_skills": matching_skills,
+                "skill_match_percentage": round(match_percentage, 1)
+            })
+    
+    # Sort by match percentage (highest first)
+    suggestions.sort(key=lambda x: x["skill_match_percentage"], reverse=True)
+    return suggestions
+
+@app.get("/companies/{company_id}/skills-dashboard")
+async def get_skills_dashboard(company_id: str):
+    profiles = supabase.table("profiles").select("skills, role").eq("company_id", company_id).execute()
+    
+    # Count skill frequency
+    skill_counts = {}
+    role_skills = {}
+    
+    for profile in profiles.data:
+        role = profile.get("role", "Unknown")
+        skills = profile.get("skills", [])
+        
+        if role not in role_skills:
+            role_skills[role] = {}
+            
+        for skill in skills:
+            skill_counts[skill] = skill_counts.get(skill, 0) + 1
+            role_skills[role][skill] = role_skills[role].get(skill, 0) + 1
+    
+    return {
+        "total_skills": skill_counts,
+        "skills_by_role": role_skills,
+        "total_employees": len(profiles.data)
+    }
 
 if __name__ == "__main__":
     import uvicorn #type: ignore
