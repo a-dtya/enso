@@ -13,6 +13,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { apiService, Profile } from '../services/api';
 import { supabase } from '../lib/supabase';
+import { canCreateProjects } from '../utils/projectRoles';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -85,6 +86,8 @@ export default function HomeScreen({ navigation }: Props) {
     );
   }
 
+  const userCanCreateProjects = canCreateProjects(profile?.role?.toLowerCase() || '');
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -123,6 +126,32 @@ export default function HomeScreen({ navigation }: Props) {
           </View>
           <Text style={styles.editText}>Edit →</Text>
         </TouchableOpacity>
+
+        {/* Project Management Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Project Management</Text>
+          <View style={styles.projectActions}>
+            <TouchableOpacity
+              style={[styles.projectCard, styles.viewProjectsCard]}
+              onPress={() => navigation.navigate('ProjectsList')}
+            >
+              <Text style={styles.projectIcon}>📋</Text>
+              <Text style={styles.projectTitle}>View Projects</Text>
+              <Text style={styles.projectSubtitle}>See all company projects</Text>
+            </TouchableOpacity>
+
+            {userCanCreateProjects && (
+              <TouchableOpacity
+                style={[styles.projectCard, styles.createProjectCard]}
+                onPress={() => navigation.navigate('CreateProject')}
+              >
+                <Text style={styles.projectIcon}>➕</Text>
+                <Text style={styles.projectTitle}>Create Project</Text>
+                <Text style={styles.projectSubtitle}>Start a new project</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
 
         {/* Quick Actions */}
         <View style={styles.section}>
@@ -309,6 +338,47 @@ const styles = StyleSheet.create({
     color: '#6366f1',
     fontWeight: '600',
   },
+  // Project Management Styles
+  projectActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  projectCard: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  viewProjectsCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#3b82f6',
+  },
+  createProjectCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#10b981',
+  },
+  projectIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  projectTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  projectSubtitle: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  // Existing styles
   actionsGrid: {
     flexDirection: 'row',
     gap: 12,

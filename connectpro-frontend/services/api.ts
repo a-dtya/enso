@@ -51,6 +51,11 @@ export interface Project {
   updated_at: string;
 }
 
+export interface ProjectWithMembers extends Project {
+  member_count?: number;
+  created_by_name?: string;
+}
+
 export interface SkillMatch {
   profile_id: string;
   name: string;
@@ -218,7 +223,7 @@ class ApiService {
   }> {
     return this.makeRequest(`/companies/${companyId}/skills-dashboard`, {}, token);
   }
-  
+
   async addProjectMember(
     projectId: string,
     profileId: string,
@@ -228,6 +233,10 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify({ profile_id: profileId }),
     }, token);
+  }
+
+  async getCompanyProjects(token: string): Promise<ProjectWithMembers[]> {
+    return this.makeRequest('/projects/company', {}, token);
   }
 
   async removeProjectMember(

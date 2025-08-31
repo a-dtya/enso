@@ -63,6 +63,9 @@ class ProjectCreate(BaseModel):
     required_skills: List[str]
     company_id: str
 
+class ProjectMemberAdd(BaseModel):
+    profile_id: str
+
 class SkillMatch(BaseModel):
     profile_id: str
     name: str
@@ -427,6 +430,163 @@ async def get_skills_dashboard(company_id: str):
         "skills_by_role": role_skills,
         "total_employees": len(profiles.data)
     }
+
+@app.post("/projects/{project_id}/members")
+async def add_project_member(
+    project_id: str,
+    member_data: ProjectMemberAdd,
+    current_user: dict = Depends(get_current_user)
+):
+    """Add a member to a project"""
+    try:
+        # Verify project exists and user has access
+        project = supabase.table("projects").select("company_id, created_by").eq("id", project_id).execute()
+        
+        if not project.data:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Get current user's profile
+        user_profile = supabase.table("profiles").select("company_id").eq("id", current_user["id"]).execute()
+        
+        if not user_profile.data:
+            raise HTTPException(status_code=404, detail="User profile not found")
+        
+        # Check if user is from same company as project
+        if project.data[0]["company_id"] != user_profile.data[0]["company_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Check if member is already in project
+        existing_member = supabase.table("project_members").select("id").eq("project_id", project_id).eq("profile_id", member_data.profile_id).execute()
+        
+        if existing_member.data:
+            raise HTTPException(status_code=400, detail="Member already in project")
+        
+        # Add member to project
+        member_insert = supabase.table("project_members").insert({
+            "project_id": project_id,
+            "profile_id": member_data.profile_id
+        }).execute()
+        
+        if not member_insert.data:
+            raise HTTPException(status_code=400, detail="Failed to add member to project")
+        
+        return {"success": True, "message": "Member added to project successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/projects/{project_id}/members/{profile_id}")
+async def remove_project_member(
+    project_id: str,
+    profile_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Remove a member from a project"""
+    try:
+        # Verify project exists and user has access
+        project = supabase.table("projects").select("company_id, created_by").eq("id", project_id).execute()
+        
+        if not project.data:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Get current user's profile
+        user_profile = supabase.table("profiles").select("company_id").eq("id", current_user["id"]).execute()
+        
+        if not user_profile.data:
+            raise HTTPException(status_code=404, detail="User profile not found")
+        
+        # Check if user is from same company as project
+        if project.data[0]["company_id"] != user_profile.data[0]["company_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Remove member from project
+        delete_result = supabase.table("project_members").delete().eq("project_id", project_id).eq("profile_id", profile_id).execute()
+        
+        return {"success": True, "message": "Member removed from project successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/projects/{project_id}/members")
+async def get_project_members(
+    project_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all members of a project"""
+    try:
+        # Verify project exists and user has access
+        project = supabase.table("projects").select("company_id").eq("id", project_id).execute()
+        
+        if not project.data:
+            raise HTTPException(status_code=404, detail="Project not found")
+        
+        # Get current user's profile
+        user_profile = supabase.table("profiles").select("company_id").eq("id", current_user["id"]).execute()
+        
+        if not user_profile.data:
+            raise HTTPException(status_code=404, detail="User profile not found")
+        
+        # Check if user is from same company as project
+        if project.data[0]["company_id"] != user_profile.data[0]["company_id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Get project members with their profile info
+        members = supabase.table("project_members").select("""
+            profile_id,
+            profiles:profile_id (
+                id,
+                full_name,
+                email,
+                role,
+                department,
+                skills,
+                availability_status
+            )
+        """).eq("project_id", project_id).execute()
+        
+        # Format response
+        member_profiles = []
+        for member in members.data:
+            if member["profiles"]:
+                member_profiles.append(member["profiles"])
+        
+        return member_profiles
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/projects/company")
+async def get_company_projects(current_user: dict = Depends(get_current_user)):
+    # Get user's company and return all projects for that company
+    # with member counts and creator names
+    user_profile = supabase.table("profiles").select("company_id").eq("id", current_user["id"]).execute()
+    if not user_profile.data:
+        raise HTTPException(status_code=404, detail="User profile not found")
+
+    company_id = user_profile.data[0]["company_id"]
+
+    projects = supabase.table("projects").select("""
+        id,
+        name,
+        description,
+        created_at,
+        updated_at,
+        created_by,
+        (SELECT COUNT(*) FROM project_members WHERE project_id = projects.id) AS member_count
+    """).eq("company_id", company_id).execute()
+
+    # Get creator names
+    for project in projects.data:
+        creator_profile = supabase.table("profiles").select("full_name").eq("id", project["created_by"]).execute()
+        project["created_by_name"] = creator_profile.data[0]["full_name"] if creator_profile.data else "Unknown"
+
+    return projects.data
 
 if __name__ == "__main__":
     import uvicorn #type: ignore

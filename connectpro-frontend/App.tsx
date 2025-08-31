@@ -28,6 +28,8 @@ export type RootStackParamList = {
   UserProfile: { userId: string };
   CreateProject: undefined;
   ProjectSuggestions: { projectId: string };
+  ProjectsList: undefined;
+  ProjectDetails: { projectId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
