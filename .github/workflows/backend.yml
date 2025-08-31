@@ -1,0 +1,44 @@
+name: Backend CI
+
+on:
+  push:
+    paths:
+      - "connectpro-backend/**"
+      - ".github/workflows/backend.yml"
+  pull_request:
+    paths:
+      - "connectpro-backend/**"
+      - ".github/workflows/backend.yml"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: connectpro-backend
+
+    env: # ✅ Dummy env vars so Supabase client doesn’t fail
+      SUPABASE_URL: "http://dummy-url"
+      SUPABASE_ANON_KEY: "dummy-key"
+      SUPABASE_JWT_SECRET: "dummy-secret"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run tests
+        run: pytest
+
+       
