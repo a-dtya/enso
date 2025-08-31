@@ -39,6 +39,26 @@ interface ConnectionWithProfile extends Connection {
   };
 }
 
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+  required_skills: string[];
+  company_id: string;
+  created_by: string;
+  status: 'planning' | 'active' | 'completed';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SkillMatch {
+  profile_id: string;
+  name: string;
+  role: string;
+  matching_skills: string[];
+  skill_match_percentage: number;
+}
+
 class ApiService {
   private async makeRequest(
     endpoint: string,
@@ -166,6 +186,65 @@ class ApiService {
       method: 'PUT',
       body: JSON.stringify({ status }),
     }, token);
+  }
+  async createProject(
+    projectData: {
+      name: string;
+      description?: string;
+      required_skills: string[];
+    },
+    token: string
+  ): Promise<{ project: Project }> {
+    return this.makeRequest('/projects', {
+      method: 'POST',
+      body: JSON.stringify(projectData),
+    }, token);
+  }
+
+  async getProjectSuggestions(
+    projectId: string,
+    token: string
+  ): Promise<SkillMatch[]> {
+    return this.makeRequest(`/projects/${projectId}/suggested-members`, {}, token);
+  }
+
+  async getSkillsDashboard(
+    companyId: string,
+    token: string
+  ): Promise<{
+    total_skills: Record<string, number>;
+    skills_by_role: Record<string, Record<string, number>>;
+    total_employees: number;
+  }> {
+    return this.makeRequest(`/companies/${companyId}/skills-dashboard`, {}, token);
+  }
+  
+  async addProjectMember(
+    projectId: string,
+    profileId: string,
+    token: string
+  ): Promise<{ success: boolean; message: string }> {
+    return this.makeRequest(`/projects/${projectId}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ profile_id: profileId }),
+    }, token);
+  }
+
+  async removeProjectMember(
+    projectId: string,
+    profileId: string,
+    token: string
+  ): Promise<{ success: boolean; message: string }> {
+    return this.makeRequest(`/projects/${projectId}/members/${profileId}`, {
+      method: 'DELETE',
+    }, token);
+  }
+
+  async getProjectMembers(
+    projectId: string,
+    token: string
+  ): Promise<Profile[]> {
+    return this.makeRequest(`/projects/${projectId}/members`, {}, token);
   }
 }
 

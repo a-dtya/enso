@@ -26,6 +26,8 @@ export type RootStackParamList = {
   Search: undefined;
   Connections: undefined;
   UserProfile: { userId: string };
+  CreateProject: undefined;
+  ProjectSuggestions: { projectId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
