@@ -18,6 +18,11 @@ jobs:
       run:
         working-directory: connectpro-backend
 
+    env: # ✅ Dummy env vars so Supabase client doesn’t fail
+      SUPABASE_URL: "http://dummy-url"
+      SUPABASE_ANON_KEY: "dummy-key"
+      SUPABASE_JWT_SECRET: "dummy-secret"
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -35,3 +40,5 @@ jobs:
 
       - name: Run tests
         run: pytest
+
+       
