@@ -9,7 +9,8 @@ import os
 from dotenv import load_dotenv #type: ignore
 from supabase import create_client, Client #type: ignore
 import re
-
+from datetime import date
+from collections import defaultdict
 load_dotenv()
 
 app = FastAPI(title="ConnectPro API", version="1.0.0")
@@ -72,6 +73,11 @@ class SkillMatch(BaseModel):
     role: str
     matching_skills: List[str]
     skill_match_percentage: float
+
+class MoodCreate(BaseModel):
+    mood_score: int
+    note: Optional[str] = None
+    project_id: Optional[str] = None  # if tagging a project
 
 def extract_domain_from_email(email: str) -> str:
     """Extract domain from email address"""
@@ -586,6 +592,107 @@ async def get_company_projects(user = Depends(get_current_user)):
 
 
     return projects.data
+
+@app.post("/mood")
+async def log_mood(mood: MoodCreate, user=Depends(get_current_user)):
+    # Get current user's profile (need company_id for morale entry)
+    profile = supabase.table("profiles").select("company_id").eq("id", user.id).execute()
+    if not profile.data:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    company_id = profile.data[0]["company_id"]
+
+    try:
+        result = supabase.table("employee_morale").insert({
+            "user_id": user.id,
+            "company_id": company_id,
+            "project_id": mood.project_id,
+            "mood_score": mood.mood_score,
+            "note": mood.note
+        }).execute()
+
+        return {"message": "Mood logged successfully", "entry": result.data[0]}
+    except Exception as e:
+        if "unique constraint" in str(e).lower():
+            raise HTTPException(status_code=400, detail="Mood already logged for today")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/mood/company/{company_id}")
+async def get_company_morale(company_id: str, range: str = "weekly", user=Depends(get_current_user)):
+    if range not in ["daily", "weekly"]:
+        raise HTTPException(status_code=400, detail="Invalid range")
+
+    # Fetch all entries for this company
+    result = supabase.table("employee_morale").select("entry_date, mood_score").eq("company_id", company_id).execute()
+    entries = result.data or []
+
+    if not entries:
+        return []
+
+    # Aggregate
+    aggregated = defaultdict(list)
+
+    if range == "weekly":
+        for e in entries:
+            week_start = e["entry_date"][:10]  # YYYY-MM-DD format
+            # Convert to week start (Monday)
+            from datetime import timedelta
+            week_start = str(date.fromisoformat(week_start) - 
+                             timedelta(days=date.fromisoformat(week_start).weekday()))
+            aggregated[week_start].append(e["mood_score"])
+    else:  # daily
+        for e in entries:
+            aggregated[e["entry_date"]].append(e["mood_score"])
+
+    # Compute average
+    result_list = []
+    for key, scores in aggregated.items():
+        avg_mood = sum(scores) / len(scores)
+        result_list.append({"date": key, "avg_mood": round(avg_mood, 2)})
+
+    # Sort descending and limit
+    result_list.sort(key=lambda x: x["date"], reverse=True)
+    limit = 4 if range == "weekly" else 7
+    return result_list[:limit]
+
+@app.get("/mood/project/{project_id}")
+async def get_project_morale(project_id: str, range: str = "weekly", user=Depends(get_current_user)):
+    if range not in ["daily", "weekly"]:
+        raise HTTPException(status_code=400, detail="Invalid range")
+
+    # Fetch all entries for this project
+    result = supabase.table("employee_morale").select("entry_date, mood_score").eq("project_id", project_id).execute()
+    entries = result.data or []
+
+    if not entries:
+        return []
+
+    # Aggregate
+    aggregated = defaultdict(list)
+
+    if range == "weekly":
+        for e in entries:
+            week_start = e["entry_date"][:10]  # YYYY-MM-DD format
+            # Convert to week start (Monday)
+            from datetime import timedelta
+            week_start = str(date.fromisoformat(week_start) - 
+                             timedelta(days=date.fromisoformat(week_start).weekday()))
+            aggregated[week_start].append(e["mood_score"])
+    else:  # daily
+        for e in entries:
+            aggregated[e["entry_date"]].append(e["mood_score"])
+
+    # Compute average
+    result_list = []
+    for key, scores in aggregated.items():
+        avg_mood = sum(scores) / len(scores)
+        result_list.append({"date": key, "avg_mood": round(avg_mood, 2)})
+
+    # Sort descending and limit
+    result_list.sort(key=lambda x: x["date"], reverse=True)
+    limit = 4 if range == "weekly" else 7
+    return result_list[:limit]
+
 
 if __name__ == "__main__":
     import uvicorn #type: ignore

@@ -10,11 +10,14 @@ import {
   Platform,
   SafeAreaView,
   ScrollView,
+  Image,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { supabase } from '../lib/supabase';
 import { apiService } from '../services/api';
+import AppLogo from '../components/AppLogo'; // using your logo component
+import { LinearGradient } from 'expo-linear-gradient';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
 
@@ -47,13 +50,11 @@ export default function SignUpScreen({ navigation }: Props) {
     setLoading(true);
 
     try {
-      // Check if company exists for this domain
       const domain = extractDomain(email);
-      
+
       try {
         await apiService.getCompanyByDomain(domain);
-        // Company exists, proceed with signup
-        
+
         const { error } = await supabase.auth.signUp({
           email: email,
           password: password,
@@ -62,11 +63,9 @@ export default function SignUpScreen({ navigation }: Props) {
         if (error) {
           Alert.alert('Error', error.message);
         } else {
-          // Navigate to profile setup
           navigation.navigate('ProfileSetup', { email });
         }
       } catch (companyError) {
-        // Company doesn't exist, navigate to company setup
         Alert.alert(
           'Company Not Found',
           `No company found for domain ${domain}. Let's set up your company first.`,
@@ -93,6 +92,8 @@ export default function SignUpScreen({ navigation }: Props) {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.header}>
+            {/* Use AppLogo component */}
+            <AppLogo />
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>Join your company's network</Text>
           </View>
@@ -127,13 +128,20 @@ export default function SignUpScreen({ navigation }: Props) {
             />
 
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={styles.button}
               onPress={signUpWithEmail}
               disabled={loading}
             >
-              <Text style={styles.buttonText}>
-                {loading ? 'Creating Account...' : 'Sign Up'}
-              </Text>
+              <LinearGradient
+                colors={['#a3e635', '#4ade80']} // lime to green
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.buttonGradient}
+              >
+                <Text style={styles.buttonText}>
+                  {loading ? 'Creating Account...' : 'Sign Up'}
+                </Text>
+              </LinearGradient>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -154,7 +162,7 @@ export default function SignUpScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#0f172a', // deep dark background (slate-900)
   },
   content: {
     flex: 1,
@@ -168,57 +176,60 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
+  logo: {
+    width: 80,
+    height: 80,
+    marginBottom: 16,
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: '#f9fafb', // near white
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6b7280',
+    color: '#94a3b8', // slate-400
     textAlign: 'center',
   },
   form: {
     gap: 16,
   },
   input: {
-    backgroundColor: 'white',
+    backgroundColor: '#1e293b', // slate-800
+    color: '#f9fafb', // text inside input
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 12,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#334155', // subtle border
   },
   button: {
-    backgroundColor: '#6366f1',
-    paddingVertical: 16,
     borderRadius: 12,
+    overflow: 'hidden', // so gradient fills correctly
+  },
+  buttonGradient: {
+    paddingVertical: 16,
     alignItems: 'center',
-    shadowColor: '#6366f1',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
+    borderRadius: 12,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: 'white',
+    color: '#0f172a', // dark text for contrast on lime button
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   linkButton: {
     alignItems: 'center',
     marginTop: 16,
   },
   linkText: {
-    color: '#6366f1',
+    color: '#a3e635', // lime accent
     fontSize: 14,
   },
 });
+
+
