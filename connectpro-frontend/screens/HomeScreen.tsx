@@ -14,6 +14,7 @@ import { RootStackParamList } from '../App';
 import { apiService, Profile } from '../services/api';
 import { supabase } from '../lib/supabase';
 import { canCreateProjects } from '../utils/projectRoles';
+import AppLogo from '../components/AppLogo';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -98,6 +99,7 @@ export default function HomeScreen({ navigation }: Props) {
       >
         {/* Header */}
         <View style={styles.header}>
+          <AppLogo />
           <View>
             <Text style={styles.greeting}>Welcome back,</Text>
             <Text style={styles.userName}>{profile?.full_name || 'User'}</Text>

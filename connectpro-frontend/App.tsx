@@ -67,11 +67,19 @@ export default function App() {
       <Stack.Navigator
         initialRouteName={session?.user ? 'Home' : 'Login'}
         screenOptions={{
-          headerStyle: { backgroundColor: '#6366f1' },
-          headerTintColor: '#fff',
-          headerTitleStyle: { fontWeight: 'bold' },
-        }}
+        headerStyle: {
+          backgroundColor: '#0f172a',
+        },
+        headerTintColor: '#a3e635',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+          color: '#f9fafb',
+          fontSize: 20,
+        },
+        headerLargeTitle: true, // 👈 makes it taller on iOS
+      }}
       >
+
         {/* Authentication / Setup screens */}
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
         <Stack.Screen name="SignUp" component={SignUpScreen} options={{ title: 'Sign Up' }} />
