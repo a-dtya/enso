@@ -16,10 +16,10 @@ export interface AggregatedMood {
 }
 
 
-export const moodEmojis = [
-  { score: 1, emoji: '😢' },
-  { score: 2, emoji: '😐' },
-  { score: 3, emoji: '🙂' },
-  { score: 4, emoji: '😄' },
-  { score: 5, emoji: '🤩' },
-];
+export const moodEmojis: Record<number, string> = {
+  1: '😢',
+  2: '😐',
+  3: '🙂',
+  4: '😄',
+  5: '🤩',
+};
