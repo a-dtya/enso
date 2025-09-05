@@ -20,6 +20,7 @@ import ProjectsListScreen from './screens/ProjectsListScreen';
 import ProjectSuggestionsScreen from './screens/ProjectSuggestionsScreen';
 import CreateProjectScreen from './screens/CreateProjectScreen';
 import MoodLoggingScreen from './screens/MoodLoggingScreen';
+import MoraleOverviewScreen from './screens/MoraleViewDashboard';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -36,6 +37,7 @@ export type RootStackParamList = {
   ProjectsList: undefined;
   ProjectDetails: { projectId: string };
   MoodLogging: undefined;
+  MoraleOverview: { companyId: string};
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -99,6 +101,7 @@ export default function App() {
         <Stack.Screen name="ProjectsList" component={ProjectsListScreen} options={{ title: 'Projects' }} />
         <Stack.Screen name="ProjectDetails" component={ProjectDetailsScreen} options={{ title: 'Project Details' }} />
         <Stack.Screen name="MoodLogging" component={MoodLoggingScreen} options={{ title: 'Log Your Mood' }} />
+        <Stack.Screen name="MoraleOverview" component={MoraleOverviewScreen} options={{ title: 'Morale Overview' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
