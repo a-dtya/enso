@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '../lib/supabase';
+import { MoodEntry, MoodScore, AggregatedMood } from '../types/mood';
 
 export interface Company {
   id: string;
@@ -89,15 +90,18 @@ class ApiService {
     });
 
     if (!response.ok) {
-    let errorMsg = 'An error occurred';
-    try {
-        const error = await response.json();
-        errorMsg = error.detail || error.message || JSON.stringify(error);
-    } catch {
-        // Fallback in case backend sends plain text
-        errorMsg = await response.text();
-    }
-    throw new Error(errorMsg);
+      let errorMsg = 'An error occurred';
+      try {
+          const error = await response.json();
+          errorMsg = error.detail || error.message || JSON.stringify(error);
+      } catch {
+          // Fallback in case backend sends plain text
+          errorMsg = await response.text();
+      }
+      const error: any = new Error(errorMsg);
+      error.status = response.status;
+      error.detail = error.detail || errorMsg;
+      throw error;
     }
 
     return response.json();
@@ -266,6 +270,36 @@ class ApiService {
   ): Promise<Profile[]> {
     return this.makeRequest(`/projects/${projectId}/members`, {}, token);
   }
-}
+
+  // ------------------------
+  // Morale / Mood methods
+  // ------------------------
+  async logMood(mood_score: MoodScore, note?: string, project_id?: string, token?: string): Promise<MoodEntry> {
+    return this.makeRequest(
+      '/mood',
+      {
+        method: 'POST',
+        body: JSON.stringify({ mood_score, note, project_id }),
+      },
+        token
+      );
+    }
+
+    async getCompanyMood(company_id: string, range: 'daily' | 'weekly' = 'weekly', token?: string): Promise<AggregatedMood[]> {
+      return this.makeRequest(
+        `/mood/company/${company_id}?range=${range}`,
+        {},
+        token
+      );
+    }
+
+    async getProjectMood(project_id: string, range: 'daily' | 'weekly' = 'weekly', token?: string): Promise<AggregatedMood[]> {
+      return this.makeRequest(
+        `/mood/project/${project_id}?range=${range}`,
+        {},
+        token
+      );
+    }
+  }
 
 export const apiService = new ApiService();

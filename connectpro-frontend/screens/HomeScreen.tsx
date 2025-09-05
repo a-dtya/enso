@@ -8,13 +8,18 @@ import {
   ScrollView,
   RefreshControl,
   Alert,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
-import { apiService, Profile } from '../services/api';
+import { apiService, Profile, ProjectWithMembers } from '../services/api';
 import { supabase } from '../lib/supabase';
 import { canCreateProjects } from '../utils/projectRoles';
 import AppLogo from '../components/AppLogo';
+import { moodEmojis, MoodScore } from '../types/mood';
+import { Picker } from '@react-native-picker/picker';
+
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -23,9 +28,16 @@ export default function HomeScreen({ navigation }: Props) {
   const [recentProfiles, setRecentProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedMood, setSelectedMood] = useState<MoodScore | null>(null);
+  const [moodNote, setMoodNote] = useState<string | undefined>(undefined);
+  const [loggingMood, setLoggingMood] = useState(false);
+  const [companyProjects, setCompanyProjects] = useState<ProjectWithMembers[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(undefined);
+
 
   useEffect(() => {
     loadData();
+    loadCompanyProjects();
   }, []);
 
   async function loadData() {
@@ -49,6 +61,18 @@ export default function HomeScreen({ navigation }: Props) {
       setRefreshing(false);
     }
   }
+
+  async function loadCompanyProjects() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      const projects = await apiService.getCompanyProjects(session.access_token);
+      setCompanyProjects(projects);
+    } catch (error) {
+      console.error('Failed to load projects', error);
+    }
+  } 
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -75,6 +99,39 @@ export default function HomeScreen({ navigation }: Props) {
         },
       ]
     );
+  }
+
+  async function handleLogMood() {
+    if (!selectedMood) return Alert.alert('Select your mood first');
+
+    setLoggingMood(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+
+      await apiService.logMood(
+        selectedMood,
+        moodNote,
+        selectedProjectId, // optional project tagging
+        session.access_token
+      );
+
+      Alert.alert('Success', 'Your mood has been logged!');
+      setSelectedMood(null);
+      setMoodNote(undefined);
+      setSelectedProjectId(undefined);
+    } catch (err: unknown) {
+      const error = err as { status?: number; detail?: string };
+
+      if (error.status === 400) {
+        Alert.alert('Error', 'You have already logged your mood for today.');
+      } else {
+        Alert.alert('Error', 'Failed to log mood');
+      }
+    } finally {
+      setLoggingMood(false);
+    }
   }
 
   if (loading && !profile) {
@@ -214,6 +271,59 @@ export default function HomeScreen({ navigation }: Props) {
             ))}
           </View>
         )}
+
+        {/* Mood Logging Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>How are you feeling today?</Text>
+          <View style={styles.moodRow}>
+            {moodEmojis.map((m) => (
+              <TouchableOpacity
+                key={m.score}
+                style={[
+                  styles.moodEmoji,
+                  selectedMood === m.score && styles.moodSelected
+                ]}
+                onPress={() => setSelectedMood(m.score as MoodScore)}
+              >
+                <Text style={styles.moodText}>{m.emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TextInput
+            style={styles.moodInput}
+            placeholder="Add a note (optional)"
+            value={moodNote}
+            onChangeText={setMoodNote}
+          />
+
+          <View style={{ marginVertical: 12 }}>
+            <Text style={{ marginBottom: 4, fontWeight: '600' }}>Tag a Project (optional)</Text>
+            <View style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8 }}>
+              <Picker
+                selectedValue={selectedProjectId}
+                onValueChange={(value) => setSelectedProjectId(value)}
+              >
+                <Picker.Item label="None" value={undefined} />
+                {companyProjects.map((proj) => (
+                  <Picker.Item key={proj.id} label={proj.name} value={proj.id} />
+                ))}
+              </Picker>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.logMoodButton}
+            onPress={handleLogMood}
+            disabled={loggingMood}
+          >
+            {loggingMood ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.logMoodText}>Log Mood</Text>
+            )}
+          </TouchableOpacity>
+        </View>
 
         {/* Status Card */}
         <View style={styles.statusCard}>
@@ -487,4 +597,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
   },
+  moodRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginVertical: 12,
+  },
+  moodEmoji: {
+    fontSize: 32,
+    padding: 12,
+    borderRadius: 12,
+  },
+  moodSelected: {
+    backgroundColor: '#e0e7ff',
+  },
+  moodText: {
+    fontSize: 28,
+  },
+  moodInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 12,
+  },
+  logMoodButton: {
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  logMoodText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  }
 });
