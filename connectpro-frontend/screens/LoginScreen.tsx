@@ -75,7 +75,7 @@ export default function LoginScreen({ navigation }: Props) {
         >
           <View style={styles.header}>
             <AppLogo />
-            <Text style={styles.title}>Enso</Text>
+            <Text style={styles.title}>JoyLoom</Text>
             <Text style={styles.subtitle}>Enhanced Employee Experience</Text>
           </View>
 
