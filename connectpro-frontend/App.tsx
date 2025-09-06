@@ -19,6 +19,8 @@ import ProjectDetailsScreen from './screens/ProjectDetailsScreen';
 import ProjectsListScreen from './screens/ProjectsListScreen';
 import ProjectSuggestionsScreen from './screens/ProjectSuggestionsScreen';
 import CreateProjectScreen from './screens/CreateProjectScreen';
+import MoodLoggingScreen from './screens/MoodLoggingScreen';
+import MoraleOverviewScreen from './screens/MoraleViewDashboard';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -34,6 +36,8 @@ export type RootStackParamList = {
   ProjectSuggestions: { projectId: string };
   ProjectsList: undefined;
   ProjectDetails: { projectId: string };
+  MoodLogging: undefined;
+  MoraleOverview: { companyId: string};
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -87,7 +91,7 @@ export default function App() {
         <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} options={{ title: 'Profile Setup' }} />
 
         {/* Main app screens */}
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'ConnectPro' }} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'JoyLoom' }} />
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
         <Stack.Screen name="Search" component={SearchScreen} options={{ title: 'Find People' }} />
         <Stack.Screen name="Connections" component={ConnectionsScreen} options={{ title: 'Connections' }} />
@@ -95,7 +99,9 @@ export default function App() {
         <Stack.Screen name="CreateProject" component={CreateProjectScreen} options={{ title: 'Create Project' }} />
         <Stack.Screen name="ProjectSuggestions" component={ProjectSuggestionsScreen} options={{ title: 'Project Suggestions' }} />
         <Stack.Screen name="ProjectsList" component={ProjectsListScreen} options={{ title: 'Projects' }} />
-        <Stack.Screen name="ProjectDetails" component={ProjectDetailsScreen} options={{ title: 'Project Details' }} />  
+        <Stack.Screen name="ProjectDetails" component={ProjectDetailsScreen} options={{ title: 'Project Details' }} />
+        <Stack.Screen name="MoodLogging" component={MoodLoggingScreen} options={{ title: 'Log Your Morale' }} />
+        <Stack.Screen name="MoraleOverview" component={MoraleOverviewScreen} options={{ title: 'Morale Overview' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

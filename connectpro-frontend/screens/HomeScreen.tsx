@@ -15,7 +15,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { apiService, Profile, ProjectWithMembers } from '../services/api';
 import { supabase } from '../lib/supabase';
-import { canCreateProjects } from '../utils/projectRoles';
+import { canCreateProjects, canViewDashboard  } from '../utils/projectRoles';
 import AppLogo from '../components/AppLogo';
 import { moodEmojis, MoodScore } from '../types/mood';
 import { Picker } from '@react-native-picker/picker';
@@ -28,16 +28,11 @@ export default function HomeScreen({ navigation }: Props) {
   const [recentProfiles, setRecentProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedMood, setSelectedMood] = useState<MoodScore | null>(null);
-  const [moodNote, setMoodNote] = useState<string | undefined>(undefined);
-  const [loggingMood, setLoggingMood] = useState(false);
-  const [companyProjects, setCompanyProjects] = useState<ProjectWithMembers[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(undefined);
+  const [isDashboardVisible, setIsDashboardVisible] = useState(false);
 
 
   useEffect(() => {
     loadData();
-    loadCompanyProjects();
   }, []);
 
   async function loadData() {
@@ -49,6 +44,9 @@ export default function HomeScreen({ navigation }: Props) {
       // Load user profile
       const userProfile = await apiService.getMyProfile(session.access_token);
       setProfile(userProfile);
+      if (canViewDashboard(userProfile.role || '')) {
+        setIsDashboardVisible(true);
+      }
 
       // Load recent profiles from the company
       const profiles = await apiService.searchProfiles('', session.access_token);
@@ -62,18 +60,7 @@ export default function HomeScreen({ navigation }: Props) {
     }
   }
 
-  async function loadCompanyProjects() {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
-
-      const projects = await apiService.getCompanyProjects(session.access_token);
-      setCompanyProjects(projects);
-    } catch (error) {
-      console.error('Failed to load projects', error);
-    }
-  } 
-
+  
   async function handleRefresh() {
     setRefreshing(true);
     await loadData();
@@ -99,39 +86,6 @@ export default function HomeScreen({ navigation }: Props) {
         },
       ]
     );
-  }
-
-  async function handleLogMood() {
-    if (!selectedMood) return Alert.alert('Select your mood first');
-
-    setLoggingMood(true);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
-
-      await apiService.logMood(
-        selectedMood,
-        moodNote,
-        selectedProjectId, // optional project tagging
-        session.access_token
-      );
-
-      Alert.alert('Success', 'Your mood has been logged!');
-      setSelectedMood(null);
-      setMoodNote(undefined);
-      setSelectedProjectId(undefined);
-    } catch (err: unknown) {
-      const error = err as { status?: number; detail?: string };
-
-      if (error.status === 400) {
-        Alert.alert('Error', 'You have already logged your mood for today.');
-      } else {
-        Alert.alert('Error', 'Failed to log mood');
-      }
-    } finally {
-      setLoggingMood(false);
-    }
   }
 
   if (loading && !profile) {
@@ -185,6 +139,21 @@ export default function HomeScreen({ navigation }: Props) {
           </View>
           <Text style={styles.editText}>Edit →</Text>
         </TouchableOpacity>
+
+        {isDashboardVisible && profile?.company_id && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Company Dashboard</Text>
+
+            <TouchableOpacity
+              style={[styles.projectCard, { backgroundColor: '#dbeafe' }]}
+              onPress={() => navigation.navigate('MoraleOverview', { companyId: profile?.company_id })}
+            >
+              <Text style={styles.projectIcon}>📊</Text>
+              <Text style={styles.projectTitle}>View Morale Overview</Text>
+              <Text style={styles.projectSubtitle}>See company mood trends</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Project Management Section */}
         <View style={styles.section}>
@@ -272,58 +241,15 @@ export default function HomeScreen({ navigation }: Props) {
           </View>
         )}
 
-        {/* Mood Logging Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>How are you feeling today?</Text>
-          <View style={styles.moodRow}>
-            {moodEmojis.map((m) => (
-              <TouchableOpacity
-                key={m.score}
-                style={[
-                  styles.moodEmoji,
-                  selectedMood === m.score && styles.moodSelected
-                ]}
-                onPress={() => setSelectedMood(m.score as MoodScore)}
-              >
-                <Text style={styles.moodText}>{m.emoji}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+        <TouchableOpacity
+          style={[styles.projectCard, { backgroundColor: '#fef3c7', marginBottom: 16 }]}
+          onPress={() => navigation.navigate('MoodLogging')}
+        >
+          <Text style={styles.projectIcon}>😊</Text>
+          <Text style={styles.projectTitle}>Log Your Mood</Text>
+          <Text style={styles.projectSubtitle}>Share how you feel today</Text>
+        </TouchableOpacity>
 
-          <TextInput
-            style={styles.moodInput}
-            placeholder="Add a note (optional)"
-            value={moodNote}
-            onChangeText={setMoodNote}
-          />
-
-          <View style={{ marginVertical: 12 }}>
-            <Text style={{ marginBottom: 4, fontWeight: '600' }}>Tag a Project (optional)</Text>
-            <View style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8 }}>
-              <Picker
-                selectedValue={selectedProjectId}
-                onValueChange={(value) => setSelectedProjectId(value)}
-              >
-                <Picker.Item label="None" value={undefined} />
-                {companyProjects.map((proj) => (
-                  <Picker.Item key={proj.id} label={proj.name} value={proj.id} />
-                ))}
-              </Picker>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={styles.logMoodButton}
-            onPress={handleLogMood}
-            disabled={loggingMood}
-          >
-            {loggingMood ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.logMoodText}>Log Mood</Text>
-            )}
-          </TouchableOpacity>
-        </View>
 
         {/* Status Card */}
         <View style={styles.statusCard}>

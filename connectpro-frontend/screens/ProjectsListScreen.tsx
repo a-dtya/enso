@@ -150,7 +150,7 @@ export default function ProjectsListScreen({ navigation }: Props) {
             style={styles.manageButton}
             onPress={() => navigation.navigate('ProjectSuggestions', { projectId: project.id })}
           >
-            <Text style={styles.manageButtonText}>Manage Team</Text>
+            <Text style={styles.manageButtonText}>Add Members</Text>
           </TouchableOpacity>
         )}
       </View>

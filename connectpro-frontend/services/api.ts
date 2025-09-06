@@ -285,7 +285,7 @@ class ApiService {
       );
     }
 
-    async getCompanyMood(company_id: string, range: 'daily' | 'weekly' = 'weekly', token?: string): Promise<AggregatedMood[]> {
+    async getCompanyMood(company_id: string, range: 'daily' | 'weekly' = 'weekly', token: string): Promise<AggregatedMood[]> {
       return this.makeRequest(
         `/mood/company/${company_id}?range=${range}`,
         {},
@@ -293,7 +293,7 @@ class ApiService {
       );
     }
 
-    async getProjectMood(project_id: string, range: 'daily' | 'weekly' = 'weekly', token?: string): Promise<AggregatedMood[]> {
+    async getProjectMood(project_id: string, range: 'daily' | 'weekly' = 'weekly', token: string): Promise<AggregatedMood[]> {
       return this.makeRequest(
         `/mood/project/${project_id}?range=${range}`,
         {},

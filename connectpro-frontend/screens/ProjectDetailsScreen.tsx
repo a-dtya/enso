@@ -260,149 +260,128 @@ export default function ProjectDetailsScreen({ navigation, route }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        
-        <View style={styles.headerActions}>
-          {canCreateProjects(userRole) && (
-            <TouchableOpacity
-              style={styles.manageButton}
-              onPress={() => navigation.navigate('ProjectSuggestions', { projectId })}
-            >
-              <Text style={styles.manageButtonText}>Add Members</Text>
-            </TouchableOpacity>
+  <SafeAreaView style={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.scrollContent}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+      }
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Project Details Card */}
+      <View style={styles.projectCard}>
+        <View style={styles.projectHeader}>
+          <View style={styles.projectInfo}>
+            <Text style={styles.projectName}>{project.name}</Text>
+            <Text style={styles.projectDescription}>
+              {project.description || 'No description available'}
+            </Text>
+          </View>
+          <View
+            style={[styles.statusBadge, { backgroundColor: getStatusColor(project.status) }]}
+          >
+            <Text style={styles.statusText}>{getStatusText(project.status)}</Text>
+          </View>
+        </View>
+
+        <View style={styles.projectMeta}>
+          <Text style={styles.metaText}>👥 {project.member_count || 0} members</Text>
+          <Text style={styles.metaText}>
+            📅 Created {new Date(project.created_at).toLocaleDateString()}
+          </Text>
+          {project.created_by_name && (
+            <Text style={styles.metaText}>👤 Created by {project.created_by_name}</Text>
           )}
         </View>
+
+        {project.required_skills && project.required_skills.length > 0 && (
+          <View style={styles.skillsContainer}>
+            <Text style={styles.skillsLabel}>Required Skills:</Text>
+            <View style={styles.skillsWrapper}>
+              {project.required_skills.map((skill, index) => (
+                <View key={index} style={styles.requiredSkillTag}>
+                  <Text style={styles.requiredSkillText}>{skill}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Project Details Card */}
-        <View style={styles.projectCard}>
-          <View style={styles.projectHeader}>
-            <View style={styles.projectInfo}>
-              <Text style={styles.projectName}>{project.name}</Text>
-              <Text style={styles.projectDescription}>
-                {project.description || 'No description available'}
-              </Text>
-            </View>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(project.status) }]}>
-              <Text style={styles.statusText}>{getStatusText(project.status)}</Text>
-            </View>
-          </View>
-
-          <View style={styles.projectMeta}>
-            <Text style={styles.metaText}>
-              👥 {project.member_count || 0} members
-            </Text>
-            <Text style={styles.metaText}>
-              📅 Created {new Date(project.created_at).toLocaleDateString()}
-            </Text>
-            {project.created_by_name && (
-              <Text style={styles.metaText}>
-                👤 Created by {project.created_by_name}
-              </Text>
-            )}
-          </View>
-
-          {project.required_skills && project.required_skills.length > 0 && (
-            <View style={styles.skillsContainer}>
-              <Text style={styles.skillsLabel}>Required Skills:</Text>
-              <View style={styles.skillsWrapper}>
-                {project.required_skills.map((skill, index) => (
-                  <View key={index} style={styles.requiredSkillTag}>
-                    <Text style={styles.requiredSkillText}>{skill}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
+      {/* Project Members Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Project Members</Text>
+          {loadingMembers && <ActivityIndicator size="small" color="#6366f1" />}
         </View>
 
-        {/* Project Members Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Project Members</Text>
-            {loadingMembers && <ActivityIndicator size="small" color="#6366f1" />}
-          </View>
-
-          {members.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateTitle}>No Members Yet</Text>
-              <Text style={styles.emptyStateText}>
-                {canCreateProjects(userRole)
-                  ? 'Add members to get started with this project'
-                  : 'No members have been added to this project yet'
-                }
-              </Text>
-              {canCreateProjects(userRole) && (
-                <TouchableOpacity
-                  style={styles.emptyStateButton}
-                  onPress={() => navigation.navigate('ProjectSuggestions', { projectId })}
-                >
-                  <Text style={styles.emptyStateButtonText}>Add Members</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          ) : (
-            <View style={styles.membersList}>
-              {members.map(renderMember)}
-            </View>
-          )}
-        </View>
-      </ScrollView>
-
-      {/* Remove Member Modal */}
-      <Modal
-        visible={showRemoveModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowRemoveModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Remove Member</Text>
-            <Text style={styles.modalMessage}>
-              Are you sure you want to remove {memberToRemove?.full_name} from this project?
+        {members.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateTitle}>No Members Yet</Text>
+            <Text style={styles.emptyStateText}>
+              {canCreateProjects(userRole)
+                ? 'Add members to get started with this project'
+                : 'No members have been added to this project yet'}
             </Text>
+          </View>
+        ) : (
+          <View style={styles.membersList}>
+            {members.map(renderMember)}
+          </View>
+        )}
+
+        {/* Add Members Button Below Members List */}
+        {canCreateProjects(userRole) && (
+          <TouchableOpacity
+            style={[styles.manageButton, { marginTop: 16 }]}
+            onPress={() => navigation.navigate('ProjectSuggestions', { projectId })}
+          >
+            <Text style={styles.manageButtonText}>Add Members</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </ScrollView>
+
+    {/* Remove Member Modal (unchanged) */}
+    <Modal
+      visible={showRemoveModal}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => setShowRemoveModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Remove Member</Text>
+          <Text style={styles.modalMessage}>
+            Are you sure you want to remove {memberToRemove?.full_name} from this project?
+          </Text>
+          
+          <View style={styles.modalActions}>
+            <TouchableOpacity
+              style={styles.modalCancelButton}
+              onPress={() => setShowRemoveModal(false)}
+            >
+              <Text style={styles.modalCancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
             
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => setShowRemoveModal(false)}
-              >
-                <Text style={styles.modalCancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.modalConfirmButton}
-                onPress={confirmRemoveMember}
-              >
-                <Text style={styles.modalConfirmButtonText}>Remove</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              style={styles.modalConfirmButton}
+              onPress={confirmRemoveMember}
+            >
+              <Text style={styles.modalConfirmButtonText}>Remove</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      </Modal>
-    </SafeAreaView>
-  );
+      </View>
+    </Modal>
+  </SafeAreaView>
+);
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#0f172a',
   },
   loadingContainer: {
     flex: 1,
@@ -411,7 +390,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    color: '#6b7280',
+    color: '#ffffffff',
     fontSize: 16,
   },
   errorText: {
@@ -443,10 +422,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   manageButton: {
-    backgroundColor: '#6366f1',
+    backgroundColor: '#a3e635',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
+    alignSelf: 'flex-end',
   },
   manageButtonText: {
     color: 'white',
@@ -548,7 +528,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: '#f9fafb',
   },
   membersList: {
     gap: 12,
