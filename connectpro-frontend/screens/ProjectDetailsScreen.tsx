@@ -17,7 +17,7 @@ import { RootStackParamList } from '../App';
 import { apiService, Profile, ProjectWithMembers } from '../services/api';
 import { supabase } from '../lib/supabase';
 import { canCreateProjects } from '../utils/projectRoles';
-
+import { FontAwesome } from "@react-native-vector-icons/fontawesome";
 type Props = NativeStackScreenProps<RootStackParamList, 'ProjectDetails'>;
 
 export default function ProjectDetailsScreen({ navigation, route }: Props) {
@@ -172,6 +172,7 @@ export default function ProjectDetailsScreen({ navigation, route }: Props) {
 
   const renderMember = (member: Profile) => (
     <View key={member.id} style={styles.memberCard}>
+      {/* --- Member Info --- */}
       <View style={styles.memberHeader}>
         <View style={styles.memberInfo}>
           <Text style={styles.memberName}>{member.full_name}</Text>
@@ -181,33 +182,14 @@ export default function ProjectDetailsScreen({ navigation, route }: Props) {
         
         <View style={styles.memberStatus}>
           <View style={[
-            styles.availabilityBadge, 
+            styles.availabilityDot,
             { backgroundColor: getAvailabilityColor(member.availability_status) }
-          ]}>
-            <Text style={styles.availabilityText}>
-              {getAvailabilityText(member.availability_status)}
-            </Text>
-          </View>
-          
-          {canCreateProjects(userRole) && (
-            <TouchableOpacity
-              style={[
-                styles.removeButton,
-                removingMember === member.id && styles.removeButtonDisabled
-              ]}
-              onPress={() => handleRemoveMember(member)}
-              disabled={removingMember === member.id}
-            >
-              {removingMember === member.id ? (
-                <ActivityIndicator size="small" color="#ef4444" />
-              ) : (
-                <Text style={styles.removeButtonText}>Remove</Text>
-              )}
-            </TouchableOpacity>
-          )}
+          ]} />
+          {/* The remove button is no longer here */}
         </View>
       </View>
 
+      {/* --- Skills & Bio --- */}
       {member.skills && member.skills.length > 0 && (
         <View style={styles.memberSkills}>
           <Text style={styles.skillsLabel}>Skills:</Text>
@@ -225,10 +207,33 @@ export default function ProjectDetailsScreen({ navigation, route }: Props) {
           </View>
         </View>
       )}
+      <View style={styles.memberBioDeleteContainer}>
+      <Text 
+            style={[styles.memberBio, !member.bio && styles.bioNotUpdated]} 
+            numberOfLines={2}
+          >
+            {member.bio || 'Bio Not Updated'}
+          </Text>
 
-      {member.bio && (
-        <Text style={styles.memberBio} numberOfLines={2}>{member.bio}</Text>
-      )}
+      {/* --- Remove Button (Updated) --- */}
+        {canCreateProjects(userRole) && (
+          <TouchableOpacity
+            style={[
+              styles.removeButton,
+              removingMember === member.id && styles.removeButtonDisabled
+            ]}
+            onPress={() => handleRemoveMember(member)}
+            disabled={removingMember === member.id}
+          >
+            {removingMember === member.id ? (
+              <ActivityIndicator size="small" color="#EF4444" />
+            ) : (
+              // Use 'trash' for solid icon, not 'trash-o'
+              <FontAwesome name="trash-o" size={24} color="#EF4444" />
+            )}
+          </TouchableOpacity>
+        )}
+        </View>
     </View>
   );
 
@@ -381,69 +386,44 @@ export default function ProjectDetailsScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0f111a', // very dark background
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  bioNotUpdated: {
+    fontStyle: 'italic',
+    color: '#9CA3AF', // A muted gray for the placeholder text
+  },
+  memberBioDeleteContainer: {
+    flexDirection: 'row',          // Lays items out horizontally
+    justifyContent: 'space-between', // Pushes bio to start, button to end
+    alignItems: 'center',          // Vertically aligns text and icon
+    marginTop: 8,                  // Adds some space above this section
+  },
   loadingText: {
     marginTop: 12,
-    color: '#ffffffff',
+    color: '#e0e0e0',
     fontSize: 16,
   },
   errorText: {
     fontSize: 18,
-    color: '#ef4444',
+    color: '#ff5c5c', // soft red
     marginBottom: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  backButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  backButtonText: {
-    color: '#6366f1',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  manageButton: {
-    backgroundColor: '#a3e635',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignSelf: 'flex-end',
-  },
-  manageButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 14,
   },
   scrollContent: {
     padding: 20,
   },
   projectCard: {
-    backgroundColor: 'white',
+    backgroundColor: '#1c1f33', // dark card
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
     elevation: 3,
     marginBottom: 20,
   },
@@ -459,24 +439,24 @@ const styles = StyleSheet.create({
   },
   projectName: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontWeight: '700',
+    color: '#f0f0f0',
     marginBottom: 6,
   },
   projectDescription: {
     fontSize: 16,
-    color: '#6b7280',
-    lineHeight: 24,
+    color: '#cfd3e0',
+    lineHeight: 22,
   },
   statusBadge: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: 14,
   },
   statusText: {
     color: 'white',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   projectMeta: {
     flexDirection: 'row',
@@ -486,15 +466,15 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#a8b0cc', // soft gray-blue
   },
   skillsContainer: {
     marginTop: 8,
   },
   skillsLabel: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
+    fontWeight: '700',
+    color: '#f0f0f0',
     marginBottom: 8,
   },
   skillsWrapper: {
@@ -504,15 +484,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   requiredSkillTag: {
-    backgroundColor: '#fef3c7',
-    paddingHorizontal: 10,
+    backgroundColor: '#292e49', // dark accent
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#f59e0b',
+    borderColor: '#6366f1', // soft blue accent
   },
   requiredSkillText: {
-    color: '#92400e',
+    color: '#dbe2ff',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -527,19 +507,19 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#f9fafb',
+    fontWeight: '700',
+    color: '#f0f0f0',
   },
   membersList: {
     gap: 12,
   },
   memberCard: {
-    backgroundColor: 'white',
+    backgroundColor: '#1c1f33',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 2,
   },
@@ -554,19 +534,19 @@ const styles = StyleSheet.create({
   },
   memberName: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontWeight: '700',
+    color: '#f0f0f0',
     marginBottom: 2,
   },
   memberRole: {
     fontSize: 14,
-    color: '#6366f1',
-    fontWeight: '500',
+    color: '#6366f1', // soft neo-blue
+    fontWeight: '600',
     marginBottom: 2,
   },
   memberDepartment: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#a8b0cc',
   },
   memberStatus: {
     alignItems: 'flex-end',
@@ -575,7 +555,7 @@ const styles = StyleSheet.create({
   availabilityBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   availabilityText: {
     color: 'white',
@@ -583,86 +563,72 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   removeButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#ef4444',
+    alignSelf: 'flex-end',
+    padding: 4
   },
   removeButtonDisabled: {
     opacity: 0.5,
   },
   removeButtonText: {
-    color: '#ef4444',
+    color: '#ff5c5c',
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   memberSkills: {
     marginBottom: 8,
   },
   skillTag: {
-    backgroundColor: '#e0e7ff',
-    paddingHorizontal: 8,
+    backgroundColor: '#292e49',
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
   },
   skillText: {
-    color: '#3730a3',
+    color: '#dbe2ff',
     fontSize: 11,
     fontWeight: '500',
   },
   moreSkills: {
-    color: '#6b7280',
+    color: '#9ca3af',
     fontSize: 11,
     fontStyle: 'italic',
   },
   memberBio: {
     fontSize: 13,
-    color: '#6b7280',
+    color: '#cfd3e0',
     fontStyle: 'italic',
   },
   emptyState: {
-    backgroundColor: 'white',
+    backgroundColor: '#1c1f33',
     borderRadius: 12,
     padding: 40,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 2,
   },
   emptyStateTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontWeight: '700',
+    color: '#f0f0f0',
     marginBottom: 8,
   },
   emptyStateText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#a8b0cc',
     textAlign: 'center',
     marginBottom: 20,
   },
-  emptyStateButton: {
-    backgroundColor: '#6366f1',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  emptyStateButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 14,
-  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: '#1c1f33',
     borderRadius: 12,
     padding: 24,
     margin: 20,
@@ -670,13 +636,13 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontWeight: '700',
+    color: '#f0f0f0',
     marginBottom: 12,
   },
   modalMessage: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#a8b0cc',
     lineHeight: 20,
     marginBottom: 20,
   },
@@ -690,20 +656,47 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#6366f1',
   },
   modalCancelButtonText: {
-    color: '#6b7280',
-    fontWeight: '500',
+    color: '#6366f1',
+    fontWeight: '600',
   },
   modalConfirmButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: '#ef4444',
+    backgroundColor: '#ff5c5c',
   },
   modalConfirmButtonText: {
     color: 'white',
-    fontWeight: '600',
+    fontWeight: '700',
   },
+  manageButton: {
+    backgroundColor: '#6366f1', // neo-blue
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignSelf: 'flex-end',
+  },
+  manageButtonText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  backButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  backButtonText: {
+    color: '#6366f1',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  availabilityDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    // The background color will be set dynamically in the JSX
+  }
 });
