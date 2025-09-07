@@ -21,6 +21,8 @@ import ProjectSuggestionsScreen from './screens/ProjectSuggestionsScreen';
 import CreateProjectScreen from './screens/CreateProjectScreen';
 import MoodLoggingScreen from './screens/MoodLoggingScreen';
 import MoraleOverviewScreen from './screens/MoraleViewDashboard';
+import ChatListScreen from './screens/ChatListScreen';
+import ChatScreen from './screens/ChatScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -38,6 +40,12 @@ export type RootStackParamList = {
   ProjectDetails: { projectId: string };
   MoodLogging: undefined;
   MoraleOverview: { companyId: string};
+  ChatList: undefined;
+  Chat: { 
+    chatId?: string; 
+    recipientId: string; 
+    recipientName: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -102,6 +110,14 @@ export default function App() {
         <Stack.Screen name="ProjectDetails" component={ProjectDetailsScreen} options={{ title: 'Project Details' }} />
         <Stack.Screen name="MoodLogging" component={MoodLoggingScreen} options={{ title: 'Log Your Morale' }} />
         <Stack.Screen name="MoraleOverview" component={MoraleOverviewScreen} options={{ title: 'Morale Overview' }} />
+        <Stack.Screen name="ChatList" component={ChatListScreen} options={{ title: 'Messages' }} />
+        <Stack.Screen 
+          name="Chat" 
+          component={ChatScreen} 
+          options={({ route }) => ({ 
+            title: route.params.recipientName || 'Chat'
+          })} 
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

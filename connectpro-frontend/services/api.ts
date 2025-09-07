@@ -35,6 +35,7 @@ export interface Connection {
 
 interface ConnectionWithProfile extends Connection {
   profile: {
+    id: string;
     full_name: string;
     role?: string;
     email: string;

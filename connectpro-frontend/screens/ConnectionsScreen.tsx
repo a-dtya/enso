@@ -27,6 +27,7 @@ interface Connection {
 
 interface ConnectionWithProfile extends Connection {
   profile: {
+    id: string;
     full_name: string;
     role?: string;
     email: string;
@@ -85,6 +86,13 @@ export default function ConnectionsScreen({ navigation }: Props) {
     }
   }
 
+  function handleStartChat(userId: string, userName: string) {
+    navigation.navigate('Chat', {
+      recipientId: userId,
+      recipientName: userName,
+    });
+  }
+
   const renderConnectionCard = (connection: ConnectionWithProfile, isReceived: boolean) => {
     const profile = connection.profile;
     const statusColors = {
@@ -127,22 +135,35 @@ export default function ConnectionsScreen({ navigation }: Props) {
             {new Date(connection.created_at).toLocaleDateString()}
           </Text>
 
-          {isReceived && connection.status === 'pending' && (
-            <View style={styles.actionButtons}>
+          <View style={styles.actionsContainer}>
+            {/* Show chat button for accepted connections */}
+            {connection.status === 'accepted' && (
               <TouchableOpacity
-                style={[styles.actionButton, styles.declineButton]}
-                onPress={() => updateConnection(connection.id, 'declined')}
+                style={styles.chatButton}
+                onPress={() => handleStartChat(profile.id, profile.full_name)}
               >
-                <Text style={styles.declineButtonText}>Decline</Text>
+                <Text style={styles.chatButtonText}>💬 Chat</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.acceptButton]}
-                onPress={() => updateConnection(connection.id, 'accepted')}
-              >
-                <Text style={styles.acceptButtonText}>Accept</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+            )}
+
+            {/* Show accept/decline buttons for pending received connections */}
+            {isReceived && connection.status === 'pending' && (
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.declineButton]}
+                  onPress={() => updateConnection(connection.id, 'declined')}
+                >
+                  <Text style={styles.declineButtonText}>Decline</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.acceptButton]}
+                  onPress={() => updateConnection(connection.id, 'accepted')}
+                >
+                  <Text style={styles.acceptButtonText}>Accept</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
       </View>
     );
@@ -179,6 +200,16 @@ export default function ConnectionsScreen({ navigation }: Props) {
           <Text style={[styles.tabText, activeTab === 'sent' && styles.activeTabText]}>
             Sent ({connections.sent.length})
           </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Add Messages Button */}
+      <View style={styles.messagesButtonContainer}>
+        <TouchableOpacity
+          style={styles.messagesButton}
+          onPress={() => navigation.navigate('ChatList')}
+        >
+          <Text style={styles.messagesButtonText}>💬 View All Messages</Text>
         </TouchableOpacity>
       </View>
 
@@ -260,6 +291,27 @@ const styles = StyleSheet.create({
   },
   activeTabText: {
     color: 'white',
+    fontWeight: '600',
+  },
+  messagesButtonContainer: {
+    marginHorizontal: 20,
+    marginTop: 16,
+  },
+  messagesButton: {
+    backgroundColor: '#10b981',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  messagesButtonText: {
+    color: 'white',
+    fontSize: 16,
     fontWeight: '600',
   },
   scrollContent: {
@@ -350,6 +402,22 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 12,
     color: '#9ca3af',
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  chatButton: {
+    backgroundColor: '#10b981',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  chatButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
   actionButtons: {
     flexDirection: 'row',
