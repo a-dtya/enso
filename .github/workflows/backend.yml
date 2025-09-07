@@ -25,6 +25,7 @@ jobs:
       TEST_USER_ID: ${{ secrets.TEST_USER_ID }}
       TEST_COMPANY_ID: ${{ secrets.TEST_COMPANY_ID }}
       TEST_PROJECT_ID: ${{ secrets.TEST_PROJECT_ID }}
+      TEST_RECIPIENT_ID: ${{ secrets.TEST_RECIPIENT_ID }}
 
     steps:
       - name: Checkout repo

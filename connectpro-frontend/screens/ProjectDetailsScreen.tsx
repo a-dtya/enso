@@ -696,7 +696,6 @@ const styles = StyleSheet.create({
   availabilityDot: {
     width: 12,
     height: 12,
-    borderRadius: 6,
-    // The background color will be set dynamically in the JSX
+    borderRadius: 6
   }
 });

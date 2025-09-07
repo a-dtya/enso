@@ -10,6 +10,7 @@ from dotenv import load_dotenv #type: ignore
 from supabase import create_client, Client #type: ignore
 import re
 from datetime import date
+from datetime import datetime
 from collections import defaultdict
 load_dotenv()
 
@@ -78,6 +79,12 @@ class MoodCreate(BaseModel):
     mood_score: int
     note: Optional[str] = None
     project_id: Optional[str] = None  # if tagging a project
+
+class ChatCreate(BaseModel):
+    recipient_id: str
+
+class MessageCreate(BaseModel):
+    content: str
 
 def extract_domain_from_email(email: str) -> str:
     """Extract domain from email address"""
@@ -693,6 +700,167 @@ async def get_project_morale(project_id: str, range: str = "weekly", user=Depend
     limit = 4 if range == "weekly" else 7
     return result_list[:limit]
 
+# ------------------------
+# Chat endpoints
+# ------------------------
+
+@app.get("/chats")
+async def get_user_chats(user = Depends(get_current_user)):
+    """Get all chats for the current user with unread counts"""
+    try:
+        # Get all chats where user is either participant
+        chats_result = supabase.table("chats").select("""
+            id, participant1_id, participant2_id, last_message_content, 
+            last_message_time, updated_at
+        """).or_(f"participant1_id.eq.{user.id},participant2_id.eq.{user.id}").execute()
+
+        chats_with_info = []
+        
+        for chat in chats_result.data:
+            # Determine the other participant
+            other_participant_id = (
+                chat["participant2_id"] 
+                if chat["participant1_id"] == user.id 
+                else chat["participant1_id"]
+            )
+            
+            # Get other participant's profile
+            profile_result = supabase.table("profiles").select(
+                "id, full_name, role"
+            ).eq("id", other_participant_id).execute()
+            
+            if not profile_result.data:
+                continue
+                
+            other_participant = profile_result.data[0]
+            
+            # Count unread messages for this user
+            unread_count = supabase.table("chat_messages").select(
+                "id", count="exact"
+            ).eq("chat_id", chat["id"]).eq("is_read", False).neq("sender_id", user.id).execute()
+            
+            chats_with_info.append({
+                **chat,
+                "other_participant": other_participant,
+                "unread_count": unread_count.count or 0
+            })
+        
+        # Sort by last message time (most recent first)
+        chats_with_info.sort(
+            key=lambda x: x["last_message_time"] or x["updated_at"], 
+            reverse=True
+        )
+        
+        return chats_with_info
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/chats/with-user")
+async def get_or_create_chat(chat_data: ChatCreate, user = Depends(get_current_user)):
+    """Get existing chat with user or create new one"""
+    try:
+        recipient_id = chat_data.recipient_id
+        
+        # Check if chat already exists between these users
+        existing_chat = supabase.table("chats").select("*").or_(
+            f"and(participant1_id.eq.{user.id},participant2_id.eq.{recipient_id}),and(participant1_id.eq.{recipient_id},participant2_id.eq.{user.id})"
+        ).execute()
+        
+        if existing_chat.data:
+            return existing_chat.data[0]
+        
+        # Create new chat
+        new_chat = supabase.table("chats").insert({
+            "participant1_id": user.id,
+            "participant2_id": recipient_id
+        }).execute()
+        
+        return new_chat.data[0]
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/chats/{chat_id}/messages")
+async def get_chat_messages(chat_id: str, user = Depends(get_current_user)):
+    """Get all messages for a chat"""
+    try:
+        # Verify user is participant in this chat
+        chat = supabase.table("chats").select("*").eq("id", chat_id).or_(
+            f"participant1_id.eq.{user.id},participant2_id.eq.{user.id}"
+        ).execute()
+        
+        if not chat.data:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Get messages ordered by creation time (oldest first for chat display)
+        messages = supabase.table("chat_messages").select(
+            "id, chat_id, sender_id, content, created_at"
+        ).eq("chat_id", chat_id).order("created_at").execute()
+        
+        return messages.data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/chats/{chat_id}/messages")
+async def send_message(chat_id: str, message_data: MessageCreate, user = Depends(get_current_user)):
+    """Send a message in a chat"""
+    try:
+        # Verify user is participant in this chat
+        chat = supabase.table("chats").select("*").eq("id", chat_id).or_(
+            f"participant1_id.eq.{user.id},participant2_id.eq.{user.id}"
+        ).execute()
+        
+        if not chat.data:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Insert the message
+        message_result = supabase.table("chat_messages").insert({
+            "chat_id": chat_id,
+            "sender_id": user.id,
+            "content": message_data.content
+        }).execute()
+        
+        # Update chat's last message info
+        supabase.table("chats").update({
+            "last_message_content": message_data.content,
+            "last_message_time": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
+        }).eq("id", chat_id).execute()
+        
+        return message_result.data[0]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/chats/{chat_id}/read")
+async def mark_messages_as_read(chat_id: str, user = Depends(get_current_user)):
+    """Mark all messages in a chat as read for the current user"""
+    try:
+        # Verify user is participant in this chat
+        chat = supabase.table("chats").select("*").eq("id", chat_id).or_(
+            f"participant1_id.eq.{user.id},participant2_id.eq.{user.id}"
+        ).execute()
+        
+        if not chat.data:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Mark all messages as read for messages not sent by current user
+        supabase.table("chat_messages").update({
+            "is_read": True
+        }).eq("chat_id", chat_id).neq("sender_id", user.id).execute()
+        
+        return {"message": "Messages marked as read"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn #type: ignore
