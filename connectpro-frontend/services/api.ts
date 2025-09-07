@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '../lib/supabase';
 import { MoodEntry, MoodScore, AggregatedMood } from '../types/mood';
+import { Chat, ChatMessage } from '../types/chat';
 
 export interface Company {
   id: string;
@@ -300,6 +301,37 @@ class ApiService {
         token
       );
     }
-  }
+    async getUserChats(token: string): Promise<Chat[]> {
+      return this.makeRequest('/chats', {}, token);
+    }
+
+    async getOrCreateChat(recipientId: string, token: string): Promise<Chat> {
+      return this.makeRequest('/chats/with-user', {
+        method: 'POST',
+        body: JSON.stringify({ recipient_id: recipientId }),
+      }, token);
+    }
+
+    async getChatMessages(chatId: string, token: string): Promise<ChatMessage[]> {
+      return this.makeRequest(`/chats/${chatId}/messages`, {}, token);
+    }
+
+    async sendMessage(
+      chatId: string, 
+      content: string, 
+      token: string
+    ): Promise<ChatMessage> {
+      return this.makeRequest(`/chats/${chatId}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ content }),
+      }, token);
+    }
+
+    async markMessagesAsRead(chatId: string, token: string): Promise<void> {
+      return this.makeRequest(`/chats/${chatId}/read`, {
+        method: 'PUT',
+      }, token);
+    }
+}
 
 export const apiService = new ApiService();
